@@ -29,13 +29,25 @@ tf.app.flags.DEFINE_integer('batch_size', 16,
 tf.app.flags.DEFINE_float('weight_init', .1,
                             """weight init for fully connected layers""")
 
-fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v') 
+fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 def generate_bouncing_ball_sample(batch_size, seq_length, shape, num_balls):
   dat = np.zeros((batch_size, seq_length, shape, shape, 3))
   for i in range(batch_size):
     dat[i, :, :, :, :] = b.bounce_vec(32, num_balls, seq_length)
-  return dat 
+  return dat
+
+def render_original_video(dat_gif):
+    print("now generating original video!")
+    video = cv2.VideoWriter()
+    success = video.open("original_video.mov", fourcc, 4, (180, 180), True)
+
+    for i in range(50 - FLAGS.seq_start):
+      x_1_r = np.uint8(np.maximum(dat_gif[i,:,:,:], 0) * 255)
+      new_im = cv2.resize(x_1_r, (180,180))
+      video.write(new_im)
+    video.release()
+
 
 def train():
   """Train ring_net for a number of steps."""
@@ -51,7 +63,7 @@ def train():
     x_unwrap = []
     with tf.variable_scope('conv_lstm', initializer = tf.random_uniform_initializer(-.01, 0.1)):
       cell = BasicConvLSTMCell.BasicConvLSTMCell([8,8], [3,3], 4)
-      new_state = cell.zero_state(FLAGS.batch_size, tf.float32) 
+      new_state = cell.zero_state(FLAGS.batch_size, tf.float32)
 
     # conv network
     for i in range(FLAGS.seq_length-1):
@@ -68,7 +80,7 @@ def train():
       # conv4
       conv4 = ld.conv_layer(conv3, 1, 1, 4, "encode_4")
       y_0 = conv4
-      # conv lstm cell 
+      # conv lstm cell
       y_1, new_state = cell(y_0, new_state)
       # conv5
       conv5 = ld.transpose_conv_layer(y_1, 1, 1, 8, "decode_5")
@@ -76,7 +88,7 @@ def train():
       conv6 = ld.transpose_conv_layer(conv5, 3, 2, 8, "decode_6")
       # conv7
       conv7 = ld.transpose_conv_layer(conv6, 3, 1, 8, "decode_7")
-      # x_1 
+      # x_1
       x_1 = ld.transpose_conv_layer(conv7, 3, 2, 3, "decode_8", True) # set activation to linear
       if i >= FLAGS.seq_start:
         x_unwrap.append(x_1)
@@ -84,13 +96,13 @@ def train():
       if i == 0:
         tf.get_variable_scope().reuse_variables()
 
-    # pack them all together 
+    # pack them all together
     x_unwrap = tf.pack(x_unwrap)
     x_unwrap = tf.transpose(x_unwrap, [1,0,2,3,4])
 
     # this part will be used for generating video
     x_unwrap_gen = []
-    new_state_gen = cell.zero_state(FLAGS.batch_size, tf.float32) 
+    new_state_gen = cell.zero_state(FLAGS.batch_size, tf.float32)
     for i in range(50):
       # conv1
       if i < FLAGS.seq_start:
@@ -104,7 +116,7 @@ def train():
       # conv4
       conv4 = ld.conv_layer(conv3, 1, 1, 4, "encode_4")
       y_0 = conv4
-      # conv lstm cell 
+      # conv lstm cell
       y_1, new_state_gen = cell(y_0, new_state_gen)
       # conv5
       conv5 = ld.transpose_conv_layer(y_1, 1, 1, 8, "decode_5")
@@ -127,16 +139,16 @@ def train():
 
     # training
     train_op = tf.train.AdamOptimizer(FLAGS.lr).minimize(loss)
-    
+
     # List of all Variables
     variables = tf.all_variables()
 
     # Build a saver
-    saver = tf.train.Saver(tf.all_variables())   
+    saver = tf.train.Saver(tf.all_variables())
 
     # Summary op
     summary_op = tf.merge_all_summaries()
- 
+
     # Build an initialization operation to run below.
     init = tf.initialize_all_variables()
 
@@ -159,16 +171,16 @@ def train():
 
       if step%100 == 0 and step != 0:
         summary_str = sess.run(summary_op, feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
-        summary_writer.add_summary(summary_str, step) 
+        summary_writer.add_summary(summary_str, step)
         print("time per batch is " + str(elapsed))
         print(step)
         print(loss_r)
-      
+
       assert not np.isnan(loss_r), 'Model diverged with loss = NaN'
 
       if step%10000 == 0:
         checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
-        saver.save(sess, checkpoint_path, global_step=step)  
+        saver.save(sess, checkpoint_path, global_step=step)
         print("saved to " + FLAGS.train_dir)
 
         # make video
@@ -176,6 +188,11 @@ def train():
         video = cv2.VideoWriter()
         success = video.open("generated_conv_lstm_video.mov", fourcc, 4, (180, 180), True)
         dat_gif = dat
+        
+        render_original_video(dat_gif)
+
+
+
         ims = sess.run([x_unwrap_gen],feed_dict={x:dat_gif, keep_prob:FLAGS.keep_prob})
         ims = ims[0][0]
         print(ims.shape)
@@ -186,6 +203,7 @@ def train():
         video.release()
 
 
+
 def main(argv=None):  # pylint: disable=unused-argument
   if tf.gfile.Exists(FLAGS.train_dir):
     tf.gfile.DeleteRecursively(FLAGS.train_dir)
@@ -194,5 +212,3 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 if __name__ == '__main__':
   tf.app.run()
-
-
