@@ -38,14 +38,21 @@ def generate_bouncing_ball_sample(batch_size, seq_length, shape, num_balls):
   return dat
 
 def render_original_video(dat_gif):
+    
     print("now generating original video!")
     video = cv2.VideoWriter()
     success = video.open("original_video.mov", fourcc, 4, (180, 180), True)
-
-    for i in range(50 - FLAGS.seq_start):
-      x_1_r = np.uint8(np.maximum(dat_gif[i,:,:,:], 0) * 255)
-      new_im = cv2.resize(x_1_r, (180,180))
-      video.write(new_im)
+    print(dat_gif.shape) 
+    
+    for i in range(16):
+      for j in range(10):
+        print("Hi")
+        x_1_r = np.uint8(np.maximum(dat_gif[i][j,:,:,:], 0) * 255)
+        print(x_1_r.shape)
+        new_im = cv2.resize(x_1_r, (180,180))
+      #except:
+       # print(x_1_r.shape) 
+        video.write(new_im)
     video.release()
 
 
@@ -178,7 +185,7 @@ def train():
 
       assert not np.isnan(loss_r), 'Model diverged with loss = NaN'
 
-      if step%10000 == 0:
+      if step%1000 == 0:
         checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
         saver.save(sess, checkpoint_path, global_step=step)
         print("saved to " + FLAGS.train_dir)
@@ -198,6 +205,7 @@ def train():
         print(ims.shape)
         for i in range(50 - FLAGS.seq_start):
           x_1_r = np.uint8(np.maximum(ims[i,:,:,:], 0) * 255)
+          print(x_1_r.shape)
           new_im = cv2.resize(x_1_r, (180,180))
           video.write(new_im)
         video.release()
