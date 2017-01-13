@@ -9,6 +9,7 @@ import cv2
 import bouncing_balls as b
 import layer_def as ld
 import BasicConvLSTMCell
+from video_feeder import get_data
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -34,16 +35,16 @@ fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 def generate_bouncing_ball_sample(batch_size, seq_length, shape, num_balls):
   dat = np.zeros((batch_size, seq_length, shape, shape, 3))
   for i in range(batch_size):
-    dat[i, :, :, :, :] = b.bounce_vec(32, num_balls, seq_length)
+    dat[i, :, :, :, :] = b.bounce_vec(64, num_balls, seq_length)
   return dat
 
 def render_original_video(dat_gif):
-    
+
     print("now generating original video!")
     video = cv2.VideoWriter()
     success = video.open("original_video.mov", fourcc, 4, (180, 180), True)
-    print(dat_gif.shape) 
-    
+    print(dat_gif.shape)
+
     for i in range(16):
       for j in range(10):
         print("Hi")
@@ -51,7 +52,7 @@ def render_original_video(dat_gif):
         print(x_1_r.shape)
         new_im = cv2.resize(x_1_r, (180,180))
       #except:
-       # print(x_1_r.shape) 
+       # print(x_1_r.shape)
         video.write(new_im)
     video.release()
 
@@ -60,7 +61,7 @@ def train():
   """Train ring_net for a number of steps."""
   with tf.Graph().as_default():
     # make inputs
-    x = tf.placeholder(tf.float32, [None, FLAGS.seq_length, 32, 32, 3])
+    x = tf.placeholder(tf.float32, [None, FLAGS.seq_length, 64, 64, 3])
 
     # possible dropout inside
     keep_prob = tf.placeholder("float")
@@ -171,7 +172,8 @@ def train():
     summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, graph_def=graph_def)
 
     for step in range(FLAGS.max_step):
-      dat = generate_bouncing_ball_sample(FLAGS.batch_size, FLAGS.seq_length, 32, FLAGS.num_balls)
+      #dat = generate_bouncing_ball_sample(FLAGS.batch_size, FLAGS.seq_length, 64, FLAGS.num_balls)
+      dat = get_data(FLAGS.batch_size, FLAGS.seq_length,(64,64))
       t = time.time()
       _, loss_r = sess.run([train_op, loss],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
       elapsed = time.time() - t
@@ -195,7 +197,7 @@ def train():
         video = cv2.VideoWriter()
         success = video.open("generated_conv_lstm_video.mov", fourcc, 4, (180, 180), True)
         dat_gif = dat
-        
+
         render_original_video(dat_gif)
 
 
