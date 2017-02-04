@@ -61,7 +61,7 @@ def train():
   """Train ring_net for a number of steps."""
   with tf.Graph().as_default():
     # make inputs
-    x = tf.placeholder(tf.float32, [None, FLAGS.seq_length, 64, 64, 3])
+    x = tf.placeholder(tf.float32, [None, FLAGS.seq_length, 256, 256, 3])
 
     # possible dropout inside
     keep_prob = tf.placeholder("float")
@@ -70,7 +70,7 @@ def train():
     # create network
     x_unwrap = []
     with tf.variable_scope('conv_lstm', initializer = tf.random_uniform_initializer(-.01, 0.1)):
-      cell = BasicConvLSTMCell.BasicConvLSTMCell([8,8], [3,3], 4)
+      cell = BasicConvLSTMCell.BasicConvLSTMCell([64,64], [3,3], 4)
       new_state = cell.zero_state(FLAGS.batch_size, tf.float32)
 
     # conv network
@@ -173,7 +173,7 @@ def train():
 
     for step in range(FLAGS.max_step):
       #dat = generate_bouncing_ball_sample(FLAGS.batch_size, FLAGS.seq_length, 64, FLAGS.num_balls)
-      dat = get_data(FLAGS.batch_size, FLAGS.seq_length,(64,64))
+      dat = get_data(FLAGS.batch_size, FLAGS.seq_length,(256,256))
       t = time.time()
       _, loss_r = sess.run([train_op, loss],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
       elapsed = time.time() - t
