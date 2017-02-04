@@ -3,9 +3,10 @@ import cv2
 
 
 
-cap = cv2.VideoCapture('sample_video.mpeg')
+cap = cv2.VideoCapture('sample_video.mp4')
 ret, frame = cap.read()
 frame_size = frame.shape
+mu = np.mean(frame, axis=(0,1))
 
 def get_sequence(seq_length, img_size=None):
     global cap
@@ -18,7 +19,7 @@ def get_sequence(seq_length, img_size=None):
 
         if not cap.isOpened():
             cap.release()
-            cap = cv2.VideoCapture('sample_video.mpeg')
+            cap = cv2.VideoCapture('sample_video.mp4')
             i = 0
 
         ret, frame = cap.read()
@@ -28,7 +29,12 @@ def get_sequence(seq_length, img_size=None):
         if img_size is None:
             sequence[i] = frame
         else:
-            sequence[i] = cv2.resize(frame, img_size)
+            frame = frame - mu
+            frame = cv2.resize(frame, img_size).astype(np.float32) / 255
+            sequence[i] = frame
+            #cv2.imshow('frame', frame)
+            #cv2.imshow('frame', frame)
+
 
 
         #sequence[i] = frame
@@ -48,7 +54,8 @@ def get_data(batch_size, seq_length=10, img_size=None):
         frame_buffer[i] = get_sequence(seq_length, img_size)
     return frame_buffer
 
-batch_size = 32
-seq_length = 2
-img_size = (64, 64)
-frame_buffer = get_data(batch_size, seq_length, img_size)
+#batch_size = 32
+#seq_length = 2
+#img_size = (640, 640)
+#frame_buffer = get_data(batch_size, seq_length, img_size)
+#cv2.destroyAllWindows()
